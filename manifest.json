@@ -1,0 +1,48 @@
+{
+  "dxt_version": "0.1",
+  "name": "fabric-mcp-server",
+  "display_name": "Fabric MCP Server",
+  "version": "0.1.0",
+  "description": "Fabric (fabric.so) knowledge management integration with search, content creation, and resource browsing tools",
+  "author": {
+    "name": "Tom Booth",
+    "email": "tb@inconceivablelabs.com"
+  },
+  "server": {
+    "type": "python",
+    "entry_point": "python -m fabric_mcp",
+    "mcp_config": {
+      "command": "python",
+      "args": ["-m", "fabric_mcp"],
+      "env": {
+        "FABRIC_API_KEY": "${user_config.fabric_api_key}",
+        "FABRIC_BASE_URL": "${user_config.fabric_base_url}"
+      }
+    }
+  },
+  "user_config": {
+    "fabric_api_key": {
+      "type": "string",
+      "title": "Fabric API Key",
+      "description": "Your Fabric API key (get from Fabric app settings, Pro tier required)",
+      "required": true
+    },
+    "fabric_base_url": {
+      "type": "string",
+      "title": "Fabric API Base URL",
+      "default": "https://api.fabric.so/v2"
+    }
+  },
+  "tools": [
+    "search",
+    "list_roots",
+    "get_resource",
+    "list_resources",
+    "list_tags",
+    "get_notepad_content",
+    "create_bookmark",
+    "create_notepad",
+    "create_folder",
+    "delete_resources"
+  ]
+}

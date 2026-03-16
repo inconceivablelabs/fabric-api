@@ -1,0 +1,3302 @@
+openapi: 3.0.3
+info:
+  version: 1.0.0
+  title: Fabric API
+servers:
+  - url: https://api.fabric.so
+    description: Fabric API
+security:
+  - OAuth2: []
+  - ApiKey: []
+paths:
+  /v2/bookmarks:
+    post:
+      tags:
+        - Bookmarks
+      operationId: createBookmark
+      x-method-name: create
+      summary: Create bookmark
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                  format: uri
+                tags:
+                  type: array
+                  items:
+                    anyOf:
+                      - type: object
+                        properties:
+                          id:
+                            $ref: '#/components/schemas/UUID'
+                        required:
+                          - id
+                      - type: object
+                        properties:
+                          name:
+                            type: string
+                            maxLength: 255
+                        required:
+                          - name
+                parentId:
+                  anyOf:
+                    - $ref: '#/components/schemas/UUID'
+                    - $ref: '#/components/schemas/RootAlias'
+                  description: Parent resource ID or an alias (the alias is resolved to the actual ID during the request handling).
+                comment:
+                  allOf:
+                    - $ref: '#/components/schemas/CommentCreate'
+                    - nullable: true
+                name:
+                  type: string
+                  nullable: true
+                  minLength: 1
+              required:
+                - url
+                - parentId
+      responses:
+        '201':
+          description: Bookmark created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkCreationResponse'
+  /v2/resources/{resourceId}/comments:
+    get:
+      tags:
+        - Comments
+      operationId: listResourceComments
+      x-method-name: list
+      summary: List comments
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: resourceId
+          in: path
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: accessToken
+          in: query
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                    minimum: 0
+                  data:
+                    type: object
+                    properties:
+                      comments:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/CommentWithAuthor'
+                    required:
+                      - comments
+                required:
+                  - count
+                  - data
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+                    enum:
+                      - Not Found
+                  detail:
+                    type: string
+                    enum:
+                      - resource_not_found
+                required:
+                  - title
+                  - detail
+  /v2/files:
+    post:
+      tags:
+        - Files
+      operationId: createFile
+      x-method-name: create
+      summary: Create file
+      description: To create a file item you first need to store it using the upload endpoint.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileCreation'
+      responses:
+        '201':
+          description: File created
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: '#/components/schemas/ResourceDetailDocument'
+                  - $ref: '#/components/schemas/ResourceDetailAudio'
+                  - $ref: '#/components/schemas/ResourceDetailVideo'
+                  - $ref: '#/components/schemas/ResourceDetailImage'
+                  - $ref: '#/components/schemas/ResourceDetailDefault'
+  /v2/folders:
+    post:
+      tags:
+        - Folders
+      operationId: createFolder
+      x-method-name: create
+      summary: Create folder
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  nullable: true
+                  minLength: 1
+                  maxLength: 255
+                parentId:
+                  anyOf:
+                    - $ref: '#/components/schemas/UUID'
+                    - $ref: '#/components/schemas/RootAlias'
+                  description: Parent resource ID or an alias (the alias is resolved to the actual ID during the request handling).
+                description:
+                  type: string
+                  nullable: true
+                icon:
+                  oneOf:
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - emoji
+                        emoji:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - emoji
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - predefined
+                        predefined:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - predefined
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - customImage
+                        customImage:
+                          type: string
+                          minLength: 1
+                      required:
+                        - type
+                        - customImage
+                    - nullable: true
+              required:
+                - parentId
+      responses:
+        '201':
+          description: Folder created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDetailFolder'
+        '404':
+          description: Resource not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+                    enum:
+                      - Not Found
+                  detail:
+                    type: string
+                    enum:
+                      - resource_not_found
+                required:
+                  - title
+                  - detail
+  /v2/memories:
+    post:
+      tags:
+        - Memories
+      operationId: createMemory
+      x-method-name: create
+      summary: Create memory
+      description: |-
+        Create a memory by analyzing the provided input data.
+
+        Set `infer` to `false` to skip inference and store the memory verbatim.
+
+        Memory inference is asynchronous. The response contains a job ID which can be used to track the status of the memory creation.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryJobSource'
+      responses:
+        '200':
+          description: Memory created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryJob'
+  /v2/memories/{memoryId}:
+    delete:
+      tags:
+        - Memories
+      operationId: deleteMemory
+      x-method-name: delete
+      summary: Delete memory
+      description: Delete an existing memory.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: memoryId
+          in: path
+      responses:
+        '204':
+          description: Memory deleted
+    get:
+      tags:
+        - Memories
+      operationId: getMemory
+      x-method-name: get
+      summary: Get memory
+      description: Retrieve the details of a specific memory.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: memoryId
+          in: path
+      responses:
+        '200':
+          description: Memory details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Memory'
+    patch:
+      tags:
+        - Memories
+      operationId: updateMemory
+      x-method-name: update
+      summary: Update memory
+      description: Update the name and content of an existing memory.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: memoryId
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  nullable: true
+                content:
+                  type: string
+                  minLength: 5
+                  maxLength: 20000
+      responses:
+        '204':
+          description: Memory updated
+  /v2/memories/jobs/{jobId}:
+    get:
+      tags:
+        - Memories
+      operationId: getMemoryJob
+      x-method-name: getJob
+      summary: Get memory job
+      description: Retrieve the status and details of a memory creation job.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: jobId
+          in: path
+      responses:
+        '200':
+          description: Memory job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryJob'
+  /v2/memories/search:
+    get:
+      tags:
+        - Memories
+      operationId: searchMemories
+      x-method-name: search
+      summary: Search memories
+      description: |-
+        Search through memories using a query string.
+
+        Uses hybrid semantic and keyword-based search with a recency bias to find relevant memories. Results are sorted by relevance and include a relevance score (higher is better).
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: string
+          required: false
+          name: query
+          in: query
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: object
+            properties:
+              property:
+                type: string
+                enum:
+                  - id
+                  - id
+                  - createdAt
+                  - modifiedAt
+              direction:
+                type: string
+                enum:
+                  - ASC
+                  - DESC
+                default: ASC
+            required:
+              - property
+          required: false
+          name: order
+          in: query
+      responses:
+        '200':
+          description: Memory search
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    minimum: 0
+                  hasMore:
+                    type: boolean
+                  hits:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Memory'
+                        - type: object
+                          properties:
+                            score:
+                              type: number
+                required:
+                  - total
+                  - hasMore
+                  - hits
+  /v2/notepads:
+    post:
+      tags:
+        - Notepads
+      operationId: createNotepad
+      x-method-name: create
+      summary: Create notepad
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  properties:
+                    name:
+                      type: string
+                      nullable: true
+                      minLength: 1
+                      maxLength: 255
+                    parentId:
+                      anyOf:
+                        - $ref: '#/components/schemas/UUID'
+                        - $ref: '#/components/schemas/RootAlias'
+                      description: Parent resource ID or an alias (the alias is resolved to the actual ID during the request handling).
+                    tags:
+                      type: array
+                      items:
+                        anyOf:
+                          - type: object
+                            properties:
+                              id:
+                                $ref: '#/components/schemas/UUID'
+                            required:
+                              - id
+                          - type: object
+                            properties:
+                              name:
+                                type: string
+                                maxLength: 255
+                            required:
+                              - name
+                    comment:
+                      allOf:
+                        - $ref: '#/components/schemas/CommentCreate'
+                        - nullable: true
+                  required:
+                    - parentId
+                - anyOf:
+                    - type: object
+                      properties:
+                        text:
+                          type: string
+                      required:
+                        - text
+                    - type: object
+                      required:
+                        - ydoc
+      responses:
+        '201':
+          description: Notepad created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDetailNotepad'
+  /v2/notepads/{resourceId}/content:
+    get:
+      tags:
+        - Notepads
+      operationId: getNotepadContent
+      x-method-name: getContent
+      summary: Get notepad content
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: resourceId
+          in: path
+      responses:
+        '200':
+          description: Notepad content
+          content:
+            text/plain:
+              schema:
+                type: string
+                format: text
+        '404':
+          description: Notepad not found
+  /v2/resources/{resourceId}:
+    get:
+      tags:
+        - Resources
+      operationId: getResource
+      x-method-name: get
+      summary: Get resource
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: resourceId
+          in: path
+      responses:
+        '200':
+          description: Resource detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceDetail'
+  /v2/resources/filter:
+    post:
+      tags:
+        - Resources
+      operationId: filterResources
+      x-method-name: filter
+      summary: List resources
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                kind:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Kind'
+                kindExclude:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Kind'
+                rootId:
+                  $ref: '#/components/schemas/UUID'
+                taskId:
+                  $ref: '#/components/schemas/UUID'
+                tagIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                name:
+                  type: string
+                url:
+                  type: string
+                  format: uri
+                  description: Look up by the URL of a bookmark kind resource.
+                parentId:
+                  allOf:
+                    - $ref: '#/components/schemas/UUID'
+                    - nullable: true
+                parentRoot:
+                  type: object
+                  properties:
+                    type:
+                      $ref: '#/components/schemas/RootType'
+                    subtype:
+                      anyOf:
+                        - $ref: '#/components/schemas/IntegrationType'
+                        - $ref: '#/components/schemas/SystemSubtypes'
+                    isPrivate:
+                      type: boolean
+                resourceIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                label:
+                  type: number
+                  nullable: true
+                  description: Label of the resource - pass null for resources that have no label.
+                shared:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/SharingFilters'
+                rootTypes:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/RootType'
+                includeRoots:
+                  type: boolean
+                  default: false
+                skipInclusions:
+                  type: boolean
+                  default: false
+                createdBefore:
+                  type: string
+                  nullable: true
+                createdAfter:
+                  type: string
+                  nullable: true
+                modifiedBefore:
+                  type: string
+                  nullable: true
+                modifiedAfter:
+                  type: string
+                  nullable: true
+                includeDescendants:
+                  type: integer
+                  maximum: 3
+                  minimum: 0
+                includeSubfolderCount:
+                  type: boolean
+                limit:
+                  type: integer
+                  minimum: 0
+                  exclusiveMinimum: true
+                  default: 20
+                cursor:
+                  type: string
+                random:
+                  type: boolean
+                userIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                order:
+                  type: object
+                  properties:
+                    property:
+                      type: string
+                      enum:
+                        - createdAt
+                        - createdAt
+                        - modifiedAt
+                        - kind
+                        - name
+                    direction:
+                      type: string
+                      enum:
+                        - ASC
+                        - DESC
+                      default: ASC
+                  required:
+                    - property
+      responses:
+        '200':
+          description: Resource filter results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceFilterResponse'
+  /v2/resources/recover:
+    post:
+      operationId: recoverResources
+      x-method-name: recover
+      tags:
+        - Resources
+      summary: Recover resources
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: string
+          required: false
+          name: accessToken
+          in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resourceIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                  minItems: 1
+              required:
+                - resourceIds
+      responses:
+        '204':
+          description: Resources recovered
+  /v2/resources/delete:
+    post:
+      operationId: removeResources
+      x-method-name: remove
+      tags:
+        - Resources
+      summary: Delete resources
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: string
+          required: false
+          name: accessToken
+          in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                resourceIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                  minItems: 1
+                archive:
+                  type: boolean
+                  default: false
+              required:
+                - resourceIds
+      responses:
+        '204':
+          description: Resources deleted
+  /v2/resource-roots/{resourceRootId}:
+    get:
+      tags:
+        - Resource roots
+      operationId: getResourceRoot
+      x-method-name: get
+      summary: Get resource root
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: resourceRootId
+          in: path
+      responses:
+        '200':
+          description: Root detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceRootDetail'
+  /v2/resource-roots:
+    get:
+      tags:
+        - Resource roots
+      operationId: listResourceRoots
+      x-method-name: list
+      summary: List resource roots
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: object
+            properties:
+              property:
+                type: string
+                enum:
+                  - name
+                  - name
+              direction:
+                type: string
+                enum:
+                  - ASC
+                  - DESC
+                default: ASC
+            required:
+              - property
+          required: false
+          name: order
+          in: query
+        - schema:
+            type: array
+            items:
+              type: object
+              properties:
+                type:
+                  $ref: '#/components/schemas/RootType'
+                subtype:
+                  anyOf:
+                    - $ref: '#/components/schemas/IntegrationType'
+                    - $ref: '#/components/schemas/SystemSubtypes'
+          required: false
+          name: types
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: search
+          in: query
+        - schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/PermissionRole'
+            minItems: 1
+          required: false
+          name: role
+          in: query
+        - schema:
+            type: number
+            nullable: true
+            minimum: 0
+            maximum: 10
+          required: false
+          name: includeMembers
+          in: query
+        - schema:
+            type: number
+            nullable: true
+            minimum: 0
+            maximum: 10
+          required: false
+          name: includeResources
+          in: query
+      responses:
+        '200':
+          description: List of roots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                    minimum: 0
+                  data:
+                    type: object
+                    properties:
+                      roots:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ResourceRootListItem'
+                      integrations:
+                        type: array
+                        items:
+                          allOf:
+                            - $ref: '#/components/schemas/PublicIntegrationSchema'
+                            - type: object
+                              required:
+                                - mirrorRegistries
+                      sharedWith:
+                        type: object
+                        additionalProperties:
+                          type: object
+                          properties:
+                            members:
+                              type: array
+                              items:
+                                allOf:
+                                  - $ref: '#/components/schemas/UserProfilePublic'
+                                  - type: object
+                                    properties:
+                                      permission:
+                                        type: object
+                                        properties:
+                                          role:
+                                            $ref: '#/components/schemas/PermissionRole'
+                                        required:
+                                          - role
+                                    required:
+                                      - permission
+                            totalMembers:
+                              type: number
+                          required:
+                            - members
+                            - totalMembers
+                      resources:
+                        type: object
+                        additionalProperties:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/ResourceDetail'
+                    required:
+                      - roots
+                      - integrations
+                required:
+                  - count
+                  - data
+  /v2/search:
+    post:
+      operationId: search
+      x-method-name: search
+      tags:
+        - Search
+      summary: Search
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              allOf:
+                - oneOf:
+                    - type: object
+                      properties:
+                        text:
+                          type: string
+                          maxLength: 255
+                      required:
+                        - mode
+                        - text
+                    - type: object
+                - type: object
+                  properties:
+                    filters:
+                      type: object
+                      properties:
+                        kinds:
+                          type: array
+                          items:
+                            type: string
+                            enum:
+                              - default
+                              - image
+                              - document
+                              - folder
+                              - bookmark
+                              - highlight
+                              - notepad
+                              - video
+                              - audio
+                              - email
+                              - person
+                              - voicenote
+                        color:
+                          type: array
+                          items:
+                            type: number
+                        parentIds:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/UUID'
+                        ancestorIds:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/UUID'
+                        rootIds:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/UUID'
+                        roots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type:
+                                $ref: '#/components/schemas/RootType'
+                              subtype:
+                                anyOf:
+                                  - $ref: '#/components/schemas/SystemSubtypes'
+                                  - $ref: '#/components/schemas/IntegrationType'
+                              isPrivate:
+                                type: boolean
+                            required:
+                              - type
+                        excludeRoots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type:
+                                $ref: '#/components/schemas/RootType'
+                              subtype:
+                                anyOf:
+                                  - $ref: '#/components/schemas/SystemSubtypes'
+                                  - $ref: '#/components/schemas/IntegrationType'
+                              isPrivate:
+                                type: boolean
+                            required:
+                              - type
+                        tagIds:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/UUID'
+                        userId:
+                          allOf:
+                            - $ref: '#/components/schemas/UUID'
+                        userIds:
+                          type: array
+                          items:
+                            $ref: '#/components/schemas/UUID'
+                        createdAfter:
+                          type: string
+                          nullable: true
+                        createdBefore:
+                          type: string
+                          nullable: true
+                    precision:
+                      type: number
+                - type: object
+                  properties:
+                    queries:
+                      type: array
+                      items:
+                        allOf:
+                          - oneOf:
+                              - type: object
+                                properties:
+                                  text:
+                                    type: string
+                                    maxLength: 255
+                                required:
+                                  - mode
+                                  - text
+                              - type: object
+                          - type: object
+                            properties:
+                              filters:
+                                type: object
+                                properties:
+                                  kinds:
+                                    type: array
+                                    items:
+                                      type: string
+                                      enum:
+                                        - default
+                                        - image
+                                        - document
+                                        - folder
+                                        - bookmark
+                                        - highlight
+                                        - notepad
+                                        - video
+                                        - audio
+                                        - email
+                                        - person
+                                        - voicenote
+                                  color:
+                                    type: array
+                                    items:
+                                      type: number
+                                  parentIds:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/UUID'
+                                  ancestorIds:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/UUID'
+                                  rootIds:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/UUID'
+                                  roots:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        type:
+                                          $ref: '#/components/schemas/RootType'
+                                        subtype:
+                                          anyOf:
+                                            - $ref: '#/components/schemas/SystemSubtypes'
+                                            - $ref: '#/components/schemas/IntegrationType'
+                                        isPrivate:
+                                          type: boolean
+                                      required:
+                                        - type
+                                  excludeRoots:
+                                    type: array
+                                    items:
+                                      type: object
+                                      properties:
+                                        type:
+                                          $ref: '#/components/schemas/RootType'
+                                        subtype:
+                                          anyOf:
+                                            - $ref: '#/components/schemas/SystemSubtypes'
+                                            - $ref: '#/components/schemas/IntegrationType'
+                                        isPrivate:
+                                          type: boolean
+                                      required:
+                                        - type
+                                  tagIds:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/UUID'
+                                  userId:
+                                    allOf:
+                                      - $ref: '#/components/schemas/UUID'
+                                  userIds:
+                                    type: array
+                                    items:
+                                      $ref: '#/components/schemas/UUID'
+                                  createdAfter:
+                                    type: string
+                                    nullable: true
+                                  createdBefore:
+                                    type: string
+                                    nullable: true
+                              precision:
+                                type: number
+                    incognito:
+                      type: boolean
+                      nullable: true
+                      default: false
+                      description: Does not store search query in search history, if set to true.
+                    pagination:
+                      type: object
+                      properties:
+                        page:
+                          type: integer
+                          minimum: 0
+                          exclusiveMinimum: true
+                          default: 1
+                        pageSize:
+                          type: integer
+                          minimum: 0
+                          exclusiveMinimum: true
+                          default: 20
+                    sort:
+                      type: object
+                      properties:
+                        field:
+                          type: string
+                          enum:
+                            - createdAt
+                            - modifiedAt
+                            - kind
+                            - id
+                        order:
+                          type: string
+                          enum:
+                            - asc
+                            - desc
+                          default: asc
+                      required:
+                        - field
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: number
+                  hasMore:
+                    type: boolean
+                  hits:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/ResourceDetail'
+                        - type: object
+                          properties:
+                            score:
+                              type: number
+                            embeddings:
+                              type: object
+                              properties:
+                                small3_512:
+                                  type: array
+                                  items:
+                                    type: number
+                                clip2:
+                                  type: array
+                                  items:
+                                    type: number
+                          required:
+                            - score
+                required:
+                  - total
+                  - hasMore
+                  - hits
+  /v2/spaces/{spaceId}:
+    delete:
+      tags:
+        - Spaces
+      operationId: removeSpace
+      x-method-name: remove
+      summary: Delete space
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: true
+          name: spaceId
+          in: path
+      responses:
+        '204':
+          description: Space deleted
+        '404':
+          description: Space not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  title:
+                    type: string
+                    enum:
+                      - Not Found
+                  detail:
+                    type: string
+                    enum:
+                      - space_not_found
+                required:
+                  - title
+                  - detail
+  /v2/spaces:
+    post:
+      tags:
+        - Spaces
+      operationId: createSpace
+      x-method-name: create
+      summary: Create space
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: string
+          required: false
+          name: accessToken
+          in: query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+                - type: object
+                  properties:
+                    name:
+                      type: string
+                      nullable: true
+                    isPrivate:
+                      type: boolean
+                  required:
+                    - name
+                - type: object
+                  properties:
+                    moveFolderId:
+                      $ref: '#/components/schemas/UUID'
+                  required:
+                    - moveFolderId
+                - type: object
+                  properties:
+                    copyFolderId:
+                      $ref: '#/components/schemas/UUID'
+                    isPrivate:
+                      type: boolean
+                  required:
+                    - copyFolderId
+      responses:
+        '201':
+          description: Space created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Space'
+  /v2/subscriptions:
+    get:
+      operationId: getSubscription
+      x-method-name: get
+      tags:
+        - Subscriptions
+      summary: Get user subscription
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/UsageType'
+            minItems: 1
+            description: By default, all usage types are returned
+          required: false
+          name: type
+          in: query
+      responses:
+        '204':
+          description: Subscription information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceSubscription'
+  /v2/tags:
+    get:
+      tags:
+        - Tags
+      operationId: listTags
+      x-method-name: list
+      summary: List tags
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: string
+            maxLength: 255
+          required: false
+          name: name
+          in: query
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                    minimum: 0
+                  data:
+                    type: object
+                    properties:
+                      tags:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Tag'
+                    required:
+                      - tags
+                required:
+                  - count
+                  - data
+    post:
+      tags:
+        - Tags
+      operationId: createTag
+      x-method-name: create
+      summary: Create tag
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                description:
+                  type: string
+                  nullable: true
+                resourceId:
+                  allOf:
+                    - $ref: '#/components/schemas/UUID'
+                    - nullable: true
+              required:
+                - name
+      responses:
+        '201':
+          description: Tag created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Tag'
+  /v2/upload:
+    get:
+      operationId: getUploadUrl
+      x-method-name: getUrl
+      tags:
+        - Uploads
+      summary: Get upload URL
+      description: Get a presigned URL for uploading a file.
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            allOf:
+              - $ref: '#/components/schemas/UUID'
+              - description: ID of the resource that will be overwritten by the uploaded file.
+          required: false
+          description: ID of the resource that will be overwritten by the uploaded file.
+          name: resourceId
+          in: query
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: filename
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: size
+          in: query
+      responses:
+        '200':
+          description: Presigned data for uploading with a PUT request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignedResponse'
+  /v2/users/me:
+    get:
+      tags:
+        - Users
+      operationId: getUserProfile
+      x-method-name: get
+      summary: My profile
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      responses:
+        '200':
+          description: My profile info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MineProfile'
+  /v2/workspaces:
+    post:
+      tags:
+        - Workspaces
+      operationId: createWorkspace
+      x-method-name: create
+      summary: Create workspace
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+                description:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                slug:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                referral:
+                  type: string
+      responses:
+        '201':
+          description: New workspace created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+    get:
+      tags:
+        - Workspaces
+      operationId: listWorkspaces
+      x-method-name: list
+      summary: List workspaces
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: search
+          in: query
+        - schema:
+            $ref: '#/components/schemas/UUID'
+          required: false
+          name: parentWorkspaceId
+          in: query
+      responses:
+        '200':
+          description: Workspaces I have access to
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: number
+                    minimum: 0
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Workspace'
+                    required:
+                      - items
+                required:
+                  - count
+                  - data
+    patch:
+      tags:
+        - Workspaces
+      operationId: patchWorkspace
+      x-method-name: patch
+      summary: Update workspace
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  maxLength: 100
+                description:
+                  type: string
+                  nullable: true
+                  maxLength: 255
+                slug:
+                  type: string
+                  minLength: 3
+                  maxLength: 50
+                avatarStoragePath:
+                  type: string
+                  nullable: true
+      responses:
+        '204':
+          description: Workspace updated
+    delete:
+      tags:
+        - Workspaces
+      operationId: removeWorkspace
+      x-method-name: remove
+      summary: Delete workspace
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+        - schema:
+            type: string
+            enum:
+              - 'true'
+              - 'false'
+          required: false
+          name: force
+          in: query
+      responses:
+        '202':
+          description: Workspace deletion requested, pending confirmation
+        '204':
+          description: Workspace deleted
+  /v2/workspaces/me:
+    get:
+      tags:
+        - Workspaces
+      operationId: get
+      x-method-name: get
+      summary: Get workspace
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      responses:
+        '200':
+          description: Get workspace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+  /v2/workspaces/deletion-confirmation:
+    post:
+      tags:
+        - Workspaces
+      operationId: acceptWorkspaceRemoval
+      x-method-name: acceptRemoval
+      summary: Confirm workspace deletion
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceIdHeader'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+              required:
+                - token
+      responses:
+        '204':
+          description: Workspace deleted
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://fabric.so/oauth2/authorize
+          tokenUrl: /oauth2/token
+          refreshUrl: /oauth2/token
+          scopes: {}
+    ApiKey:
+      type: apiKey
+      in: header
+      name: X-Api-Key
+      description: 'You can generate your API key under settings inside the Fabric app. Important: do not share or publish this key in your client-side code.'
+  parameters:
+    WorkspaceIdHeader:
+      name: X-Fabric-Workspace-Id
+      in: header
+      required: false
+      description: Optional. When provided, the request is executed against the specified delegated workspace. If omitted, the parent workspace is used.
+      schema:
+        type: string
+  schemas:
+    UUID:
+      type: string
+      pattern: ^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$
+    AssistantChat:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          nullable: true
+        isPinned:
+          type: boolean
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+      required:
+        - id
+        - isPinned
+        - createdAt
+        - modifiedAt
+    ChatbotModel:
+      type: string
+      nullable: true
+      enum:
+        - dummy
+        - gpt-5-1
+        - gpt-5-1-instant
+        - gpt-5-2
+        - gpt-5-2-instant
+        - claude-haiku-4-5
+        - claude-sonnet-4-5
+        - claude-opus-4-6
+        - gemini-3-flash
+        - gemini-3-pro
+        - grok-4
+        - claude-opus-4-5
+        - gpt-4o
+        - gpt-4-1
+        - gemini-2-5-flash
+    ToolStatus:
+      type: string
+      enum:
+        - pending
+        - success
+        - failure
+        - needs_confirmation
+    AssistantMessagePart:
+      oneOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - text
+            text:
+              type: string
+          required:
+            - type
+            - text
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - tool
+            name:
+              type: string
+            callId:
+              type: string
+            status:
+              $ref: '#/components/schemas/ToolStatus'
+            args:
+              type: object
+              additionalProperties:
+                nullable: true
+            result:
+              nullable: true
+            error:
+              type: string
+          required:
+            - type
+            - name
+            - callId
+            - status
+            - args
+    AssistantMessageBase:
+      type: object
+      properties:
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        parts:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/AssistantMessagePart'
+          minItems: 1
+        content:
+          type: string
+          nullable: true
+          maxLength: 100000
+      required:
+        - role
+    AssistantMessage:
+      allOf:
+        - $ref: '#/components/schemas/AssistantMessageBase'
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            assistantChatId:
+              $ref: '#/components/schemas/UUID'
+            model:
+              $ref: '#/components/schemas/ChatbotModel'
+            context:
+              type: object
+              nullable: true
+              properties:
+                resourceIds:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+                snippets:
+                  type: array
+                  items:
+                    type: string
+            createdAt:
+              type: string
+            modifiedAt:
+              type: string
+          required:
+            - id
+            - assistantChatId
+            - model
+            - context
+            - createdAt
+            - modifiedAt
+    UserGroup:
+      type: string
+      enum:
+        - admin
+        - fabric-internal
+        - fabric-email
+        - investor
+        - dogfooding
+        - google-drive-beta
+        - beta-user-recap
+        - local-file-sync
+        - notepad-diffs
+    UserProfilePublic:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+          pattern: ^[\p{Letter}\p{Emoji_Presentation}\p{Emoji_Modifier}0-9\s\-.']{1,255}$
+        pictureUrlCdn:
+          type: string
+          nullable: true
+          maxLength: 4096
+      required:
+        - id
+    MineProfile:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        pictureUrlCdn:
+          type: string
+          nullable: true
+          maxLength: 4096
+        name:
+          type: string
+          nullable: true
+          maxLength: 255
+          pattern: ^[\p{Letter}\p{Emoji_Presentation}\p{Emoji_Modifier}0-9\s\-.']{1,255}$
+        email:
+          type: string
+          maxLength: 255
+          format: email
+        authMethod:
+          type: string
+          nullable: true
+          maxLength: 256
+        groups:
+          type: array
+          nullable: true
+          items:
+            $ref: '#/components/schemas/UserGroup'
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+        emailIngestionAddress:
+          type: string
+          nullable: true
+          format: email
+      required:
+        - id
+        - email
+        - createdAt
+        - modifiedAt
+        - emailIngestionAddress
+        - onboarding
+    CommentCreate:
+      type: object
+      properties:
+        content:
+          type: string
+          maxLength: 25000
+    CommentWithAuthor:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        content:
+          type: string
+          maxLength: 25000
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+        resourceId:
+          $ref: '#/components/schemas/UUID'
+        user:
+          allOf:
+            - $ref: '#/components/schemas/UserProfilePublic'
+            - nullable: true
+        mentionedUsers:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProfilePublic'
+      required:
+        - id
+        - content
+        - annotation
+        - createdAt
+        - modifiedAt
+        - resourceId
+        - user
+        - mentionedUsers
+    IntegrationType:
+      type: string
+      enum:
+        - GOOGLE_DRIVE
+        - GMAIL
+        - GITHUB
+        - IOS_DEVICE
+        - ANDROID_DEVICE
+        - RSS
+        - NOTION
+        - LOCAL_FS
+        - DROPBOX
+        - ONEDRIVE
+        - MIXPANEL
+        - STRIPE
+    IntegrationStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - HIDDEN
+        - INACTIVE
+    PresignedImage:
+      type: object
+      properties:
+        url:
+          type: string
+        width:
+          type: number
+          nullable: true
+        height:
+          type: number
+          nullable: true
+        mime:
+          type: string
+          nullable: true
+      required:
+        - url
+    ProcessingState:
+      type: string
+      nullable: true
+      enum:
+        - pending
+        - processing
+        - completed
+        - failed
+      description: Status of the link preview
+    EmailMessageMetadataBlock:
+      type: object
+      properties:
+        emailMessage:
+          type: object
+          properties:
+            snippet:
+              type: string
+              nullable: true
+            subject:
+              type: string
+              nullable: true
+            from:
+              type: string
+              nullable: true
+            to:
+              type: string
+              nullable: true
+            body:
+              type: string
+              nullable: true
+            cc:
+              type: string
+              nullable: true
+            bcc:
+              type: string
+              nullable: true
+          required:
+            - snippet
+            - subject
+            - from
+            - to
+            - body
+            - cc
+            - bcc
+        emailPreview:
+          type: object
+          properties:
+            html:
+              type: string
+              nullable: true
+              description: HTML content of the email
+          required:
+            - html
+        caption:
+          type: string
+          nullable: true
+          description: Summary text
+        keywords:
+          type: array
+          nullable: true
+          items:
+            type: string
+          description: Keywords
+      required:
+        - emailMessage
+        - caption
+    PermissionRole:
+      type: string
+      enum:
+        - owner
+        - viewer
+        - editor
+        - commenter
+    Permission:
+      type: object
+      properties:
+        resourceId:
+          $ref: '#/components/schemas/UUID'
+        userId:
+          $ref: '#/components/schemas/UUID'
+        role:
+          $ref: '#/components/schemas/PermissionRole'
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+      required:
+        - resourceId
+        - userId
+        - role
+        - createdAt
+        - modifiedAt
+    PermissionWithUser:
+      allOf:
+        - $ref: '#/components/schemas/Permission'
+        - type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/UserProfilePublic'
+          required:
+            - user
+    Kind:
+      type: string
+      enum:
+        - default
+        - image
+        - document
+        - folder
+        - bookmark
+        - highlight
+        - notepad
+        - video
+        - audio
+        - email
+        - person
+        - voicenote
+    Tag:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        userId:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          nullable: true
+        modifiedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - userId
+        - name
+        - description
+    RootAlias:
+      type: string
+      enum:
+        - '@alias::inbox'
+        - '@alias::bin'
+    FileCreation:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 255
+        attachment:
+          type: object
+          properties:
+            path:
+              type: string
+            filename:
+              type: string
+          required:
+            - path
+            - filename
+        parentId:
+          anyOf:
+            - $ref: '#/components/schemas/UUID'
+            - $ref: '#/components/schemas/RootAlias'
+          description: Parent resource ID or an alias (the alias is resolved to the actual ID during the request handling).
+        tags:
+          type: array
+          items:
+            anyOf:
+              - type: object
+                properties:
+                  id:
+                    $ref: '#/components/schemas/UUID'
+                required:
+                  - id
+              - type: object
+                properties:
+                  name:
+                    type: string
+                    maxLength: 255
+                required:
+                  - name
+        comment:
+          allOf:
+            - $ref: '#/components/schemas/CommentCreate'
+            - nullable: true
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+        metadata:
+          type: object
+          properties:
+            voiceNote:
+              type: boolean
+              nullable: true
+              description: Whether this item is the audio part of a voice note
+            transcript:
+              type: object
+              nullable: true
+              properties:
+                key:
+                  type: string
+              required:
+                - key
+      required:
+        - attachment
+        - parentId
+        - mimeType
+    RootType:
+      type: string
+      enum:
+        - SYSTEM
+        - SPACE
+        - INTEGRATION
+    SystemSubtypes:
+      type: string
+      enum:
+        - inbox
+        - bin
+    ResourceIcon:
+      oneOf:
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - emoji
+            emoji:
+              type: string
+          required:
+            - type
+            - emoji
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - predefined
+            predefined:
+              type: string
+          required:
+            - type
+            - predefined
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - customImage
+            customImage:
+              $ref: '#/components/schemas/PresignedImage'
+          required:
+            - type
+            - customImage
+    FolderBase:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+    Folder:
+      allOf:
+        - $ref: '#/components/schemas/FolderBase'
+        - type: object
+          properties:
+            userId:
+              $ref: '#/components/schemas/UUID'
+            parentId:
+              $ref: '#/components/schemas/UUID'
+            isReadonly:
+              type: boolean
+            icon:
+              allOf:
+                - $ref: '#/components/schemas/ResourceIcon'
+                - oneOf:
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - emoji
+                        emoji:
+                          type: string
+                      required:
+                        - type
+                        - emoji
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - predefined
+                        predefined:
+                          type: string
+                      required:
+                        - type
+                        - predefined
+                    - type: object
+                      properties:
+                        type:
+                          type: string
+                          enum:
+                            - customImage
+                        customImage:
+                          $ref: '#/components/schemas/PresignedImage'
+                      required:
+                        - type
+                        - customImage
+                    - nullable: true
+          required:
+            - userId
+            - parentId
+            - isReadonly
+            - icon
+    ResourceRootFolder:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          nullable: true
+        isReadonly:
+          type: boolean
+        icon:
+          allOf:
+            - $ref: '#/components/schemas/ResourceIcon'
+            - oneOf:
+                - type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - emoji
+                    emoji:
+                      type: string
+                  required:
+                    - type
+                    - emoji
+                - type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - predefined
+                    predefined:
+                      type: string
+                  required:
+                    - type
+                    - predefined
+                - type: object
+                  properties:
+                    type:
+                      type: string
+                      enum:
+                        - customImage
+                    customImage:
+                      $ref: '#/components/schemas/PresignedImage'
+                  required:
+                    - type
+                    - customImage
+                - nullable: true
+        permissions:
+          type: object
+          properties:
+            role:
+              $ref: '#/components/schemas/PermissionRole'
+          required:
+            - role
+        childrenCount:
+          type: number
+        memberCount:
+          type: number
+          minimum: 0
+      required:
+        - id
+        - name
+        - isReadonly
+        - icon
+        - childrenCount
+        - memberCount
+    Resource:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        kind:
+          $ref: '#/components/schemas/Kind'
+        mimeType:
+          type: string
+          nullable: true
+        extension:
+          type: string
+          nullable: true
+        name:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        icon:
+          allOf:
+            - $ref: '#/components/schemas/ResourceIcon'
+        size:
+          type: number
+          nullable: true
+        url:
+          type: string
+        commentPinned:
+          allOf:
+            - $ref: '#/components/schemas/CommentWithAuthor'
+            - nullable: true
+        label:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: number
+            hexColor:
+              type: string
+              maxLength: 7
+          required:
+            - id
+            - hexColor
+        parent:
+          type: object
+          nullable: true
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            name:
+              type: string
+              nullable: true
+          required:
+            - id
+            - name
+        cover:
+          allOf:
+            - $ref: '#/components/schemas/PresignedImage'
+            - nullable: true
+        user:
+          allOf:
+            - $ref: '#/components/schemas/UserProfilePublic'
+            - nullable: true
+        root:
+          type: object
+          nullable: true
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            type:
+              $ref: '#/components/schemas/RootType'
+            subtype:
+              anyOf:
+                - $ref: '#/components/schemas/IntegrationType'
+                - $ref: '#/components/schemas/SystemSubtypes'
+                - nullable: true
+            isPrivate:
+              type: boolean
+            folder:
+              allOf:
+                - $ref: '#/components/schemas/FolderBase'
+                - type: object
+                  properties:
+                    user:
+                      allOf:
+                        - $ref: '#/components/schemas/UserProfilePublic'
+                        - nullable: true
+          required:
+            - id
+            - type
+            - subtype
+            - isPrivate
+            - private
+            - folder
+        stateProcessing:
+          $ref: '#/components/schemas/ProcessingState'
+        originUrl:
+          type: string
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                $ref: '#/components/schemas/UUID'
+              name:
+                type: string
+                maxLength: 255
+            required:
+              - id
+              - name
+        chats:
+          type: array
+          items:
+            $ref: '#/components/schemas/AssistantChat'
+        thumbnail:
+          type: object
+          nullable: true
+          properties:
+            sm:
+              type: string
+            md:
+              type: string
+            lg:
+              type: string
+            xl:
+              type: string
+            original:
+              type: string
+        fileUrl:
+          type: string
+          nullable: true
+        preferences:
+          type: object
+          nullable: true
+          additionalProperties:
+            nullable: true
+        publishedAncestors:
+          type: array
+          items:
+            type: object
+            properties:
+              resourceId:
+                $ref: '#/components/schemas/UUID'
+              accessToken:
+                type: string
+            required:
+              - resourceId
+              - accessToken
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+      required:
+        - id
+        - kind
+        - mimeType
+        - extension
+        - name
+        - description
+        - size
+        - url
+        - commentCount
+        - commentPinned
+        - pins
+        - pinnedTo
+        - label
+        - parent
+        - ancestors
+        - cover
+        - user
+        - root
+        - stateProcessing
+        - jobsProcessing
+        - originUrl
+        - tags
+        - chats
+        - thumbnail
+        - fileUrl
+        - preferences
+        - isShared
+        - isReadonly
+        - isHidden
+        - shareToken
+        - publishToken
+        - createdAt
+        - modifiedAt
+    ResourceDetailBookmark:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - bookmark
+          required:
+            - data
+    ResourceDetailEmailMessage:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - email
+            data:
+              $ref: '#/components/schemas/EmailMessageMetadataBlock'
+          required:
+            - data
+    ResourceDetailHighlight:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - highlight
+          required:
+            - data
+    ResourceDetailDocument:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - document
+          required:
+            - data
+    ResourceDetailFolder:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - folder
+          required:
+            - data
+    ResourceDetailImage:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - image
+          required:
+            - data
+    ResourceDetailVideo:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - video
+          required:
+            - data
+    ResourceDetailAudio:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - audio
+          required:
+            - data
+    ResourceDetailNotepad:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - notepad
+          required:
+            - data
+    ResourceDetailVoicenote:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - voicenote
+          required:
+            - data
+    ResourceDetailDefault:
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            kind:
+              type: string
+              enum:
+                - default
+          required:
+            - data
+    ResourceDetail:
+      oneOf:
+        - $ref: '#/components/schemas/ResourceDetailDocument'
+        - $ref: '#/components/schemas/ResourceDetailAudio'
+        - $ref: '#/components/schemas/ResourceDetailVideo'
+        - $ref: '#/components/schemas/ResourceDetailBookmark'
+        - $ref: '#/components/schemas/ResourceDetailFolder'
+        - $ref: '#/components/schemas/ResourceDetailHighlight'
+        - $ref: '#/components/schemas/ResourceDetailImage'
+        - $ref: '#/components/schemas/ResourceDetailNotepad'
+        - $ref: '#/components/schemas/ResourceDetailVoicenote'
+        - $ref: '#/components/schemas/ResourceDetailEmailMessage'
+        - $ref: '#/components/schemas/ResourceDetailDefault'
+      discriminator:
+        propertyName: kind
+        mapping:
+          document: '#/components/schemas/ResourceDetailDocument'
+          audio: '#/components/schemas/ResourceDetailAudio'
+          video: '#/components/schemas/ResourceDetailVideo'
+          bookmark: '#/components/schemas/ResourceDetailBookmark'
+          folder: '#/components/schemas/ResourceDetailFolder'
+          highlight: '#/components/schemas/ResourceDetailHighlight'
+          image: '#/components/schemas/ResourceDetailImage'
+          notepad: '#/components/schemas/ResourceDetailNotepad'
+          voicenote: '#/components/schemas/ResourceDetailVoicenote'
+          email: '#/components/schemas/ResourceDetailEmailMessage'
+          default: '#/components/schemas/ResourceDetailDefault'
+    SubscriptionTier:
+      type: string
+      nullable: true
+      enum:
+        - free
+        - basic
+        - starter
+        - pro
+        - max
+        - lifetime
+        - team
+        - developer_scale
+    PlanEntitlements:
+      type: object
+      properties:
+        maxFileSizeMB:
+          type: integer
+        chatbotCredits:
+          type: integer
+        maxResourceCount:
+          type: integer
+        maxTotalStorageSizeMB:
+          type: integer
+        creditCentsMonthly:
+          type: integer
+        integrationsEnabled:
+          type: boolean
+        bulkImportEnabled:
+          type: boolean
+        audioTranscriptionEnabled:
+          type: boolean
+        aiVoiceAndMeetingRecordingEnabled:
+          type: boolean
+        recapsEnabled:
+          type: boolean
+        modelSwitchingEnabled:
+          type: boolean
+        apiKeysEnabled:
+          type: boolean
+        fabricLabsEnabled:
+          type: boolean
+        freeImportItemLimit:
+          type: integer
+        unitPricePerCredit:
+          type: number
+        requestsPerHour:
+          type: number
+        unitPricePerGB:
+          type: number
+        maxDelegatedWorkspaces:
+          type: number
+        memoryEnabled:
+          type: boolean
+        webSearchEnabled:
+          type: boolean
+      required:
+        - maxFileSizeMB
+        - chatbotCredits
+        - maxResourceCount
+        - maxTotalStorageSizeMB
+        - creditCentsMonthly
+        - integrationsEnabled
+        - bulkImportEnabled
+        - audioTranscriptionEnabled
+        - aiVoiceAndMeetingRecordingEnabled
+        - recapsEnabled
+        - modelSwitchingEnabled
+        - apiKeysEnabled
+        - fabricLabsEnabled
+        - freeImportItemLimit
+    BookmarkCreationResponse:
+      anyOf:
+        - $ref: '#/components/schemas/ResourceDetailBookmark'
+        - $ref: '#/components/schemas/ResourceDetailDocument'
+    PublicIntegrationSchema:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        userId:
+          $ref: '#/components/schemas/UUID'
+        externalId:
+          type: string
+        email:
+          type: string
+          nullable: true
+        displayName:
+          type: string
+        pictureUrl:
+          type: string
+          nullable: true
+        type:
+          $ref: '#/components/schemas/IntegrationType'
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+        status:
+          $ref: '#/components/schemas/IntegrationStatus'
+        statusMessages:
+          type: object
+          additionalProperties:
+            nullable: true
+        needsReinstall:
+          type: boolean
+      required:
+        - id
+        - userId
+        - externalId
+        - email
+        - displayName
+        - pictureUrl
+        - type
+        - createdAt
+        - modifiedAt
+        - status
+        - statusMessages
+        - needsReinstall
+    UsageAmountType:
+      type: string
+      enum:
+        - consumed
+        - remaining
+    UsageBreakdownLabel:
+      type: string
+      enum:
+        - topped_up
+        - included
+    UsageItem:
+      type: object
+      properties:
+        total:
+          type: number
+          nullable: true
+        amount:
+          type: number
+        amountType:
+          $ref: '#/components/schemas/UsageAmountType'
+        breakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                $ref: '#/components/schemas/UsageBreakdownLabel'
+              amount:
+                type: number
+            required:
+              - label
+              - amount
+        limit:
+          type: number
+          nullable: true
+        used:
+          type: number
+      required:
+        - total
+        - amount
+        - amountType
+        - limit
+        - used
+    UsageItems:
+      type: object
+      properties:
+        storage:
+          $ref: '#/components/schemas/UsageItem'
+        chatbot:
+          $ref: '#/components/schemas/UsageItem'
+        credits:
+          $ref: '#/components/schemas/UsageItem'
+        imported_items:
+          $ref: '#/components/schemas/UsageItem'
+    SubscriptionStatus:
+      type: string
+      nullable: true
+      enum:
+        - active
+        - canceled
+        - incomplete
+        - incomplete_expired
+        - past_due
+        - paused
+        - trialing
+        - unpaid
+    BillingCycle:
+      type: string
+      nullable: true
+      enum:
+        - week
+        - month
+        - year
+        - year_3
+    Store:
+      type: string
+      nullable: true
+      enum:
+        - app_store
+        - play_store
+        - stripe
+        - promotional
+    WorkspaceSubscription:
+      type: object
+      properties:
+        tier:
+          $ref: '#/components/schemas/SubscriptionTier'
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        trialEndingAt:
+          type: string
+          nullable: true
+        billingCycle:
+          $ref: '#/components/schemas/BillingCycle'
+        entitlements:
+          allOf:
+            - $ref: '#/components/schemas/PlanEntitlements'
+            - nullable: true
+        hasDefaultPaymentMethod:
+          type: boolean
+        usage:
+          $ref: '#/components/schemas/UsageItems'
+        creditTopupAt:
+          type: string
+          nullable: true
+        creditOperationCosts:
+          type: object
+          properties:
+            RESOURCE_CREATED:
+              type: integer
+            ASSISTANT_MESSAGE:
+              type: integer
+            WEB_SEARCH:
+              type: integer
+            TOP_UP_MANUAL:
+              type: integer
+            TOP_UP_PLAN:
+              type: integer
+            TOP_UP_AUTO:
+              type: integer
+        planStoreId:
+          type: string
+          nullable: true
+        planStoreType:
+          $ref: '#/components/schemas/Store'
+      required:
+        - tier
+        - status
+        - trialEndingAt
+        - billingCycle
+        - entitlements
+        - hasDefaultPaymentMethod
+        - usage
+        - creditTopupAt
+        - creditOperationCosts
+        - planStoreId
+        - planStoreType
+    MemoryJob:
+      oneOf:
+        - type: object
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum:
+                - completed
+            memories:
+              type: object
+              properties:
+                created:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/UUID'
+              required:
+                - created
+          required:
+            - id
+            - status
+            - memories
+        - type: object
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum:
+                - pending
+          required:
+            - id
+            - status
+    MemoryJobSource:
+      type: object
+      properties:
+        source:
+          type: string
+          enum:
+            - text
+        content:
+          type: string
+          minLength: 5
+          maxLength: 20000
+        infer:
+          type: boolean
+          default: true
+        immutable:
+          type: boolean
+          default: false
+      required:
+        - source
+        - content
+    Memory:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          nullable: true
+        content:
+          type: string
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+      required:
+        - id
+        - name
+        - content
+        - createdAt
+        - modifiedAt
+    ResourceFilterResponse:
+      type: object
+      properties:
+        total:
+          type: number
+        hasMore:
+          type: boolean
+        nextCursor:
+          type: string
+          nullable: true
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourceDetail'
+      required:
+        - total
+        - hasMore
+        - resources
+    ResourceRootBase:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        type:
+          $ref: '#/components/schemas/RootType'
+        createdAt:
+          type: string
+        modifiedAt:
+          type: string
+        isPrivate:
+          type: boolean
+        lastResourceAddedAt:
+          type: string
+          nullable: true
+          description: The timestamp of when the last descendant resource was added
+        folder:
+          $ref: '#/components/schemas/ResourceRootFolder'
+      required:
+        - id
+        - type
+        - createdAt
+        - modifiedAt
+        - private
+        - isPrivate
+        - folder
+    ResourceRootSystem:
+      allOf:
+        - $ref: '#/components/schemas/ResourceRootBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - SYSTEM
+            subtype:
+              $ref: '#/components/schemas/SystemSubtypes'
+          required:
+            - subtype
+    ResourceRootIntegration:
+      allOf:
+        - $ref: '#/components/schemas/ResourceRootBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - INTEGRATION
+            subtype:
+              $ref: '#/components/schemas/IntegrationType'
+          required:
+            - subtype
+    ResourceRootSpace:
+      allOf:
+        - $ref: '#/components/schemas/ResourceRootBase'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - SPACE
+            subtype:
+              nullable: true
+          required:
+            - subtype
+    ResourceRootListItem:
+      anyOf:
+        - $ref: '#/components/schemas/ResourceRootSystem'
+        - $ref: '#/components/schemas/ResourceRootIntegration'
+        - $ref: '#/components/schemas/ResourceRootSpace'
+    ResourceRootDetail:
+      allOf:
+        - type: object
+          properties:
+            id:
+              $ref: '#/components/schemas/UUID'
+            type:
+              $ref: '#/components/schemas/RootType'
+            createdAt:
+              type: string
+            modifiedAt:
+              type: string
+            isPrivate:
+              type: boolean
+            lastResourceAddedAt:
+              type: string
+              nullable: true
+              description: The timestamp of when the last descendant resource was added
+            folder:
+              $ref: '#/components/schemas/ResourceRootFolder'
+          required:
+            - id
+            - type
+            - createdAt
+            - modifiedAt
+            - private
+            - isPrivate
+            - folder
+        - oneOf:
+            - $ref: '#/components/schemas/ResourceRootSystem'
+            - $ref: '#/components/schemas/ResourceRootSpace'
+            - allOf:
+                - $ref: '#/components/schemas/ResourceRootIntegration'
+                - type: object
+    Space:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        name:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+    PresignedResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        headers:
+          anyOf:
+            - type: object
+              properties:
+                ETag:
+                  type: string
+                  nullable: true
+                Content-Disposition:
+                  type: string
+                  nullable: true
+            - type: object
+              additionalProperties:
+                type: string
+      required:
+        - url
+        - headers
+    WorkspaceRoleType:
+      type: string
+      enum:
+        - system
+        - user
+    WorkspaceRole:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        alias:
+          type: string
+          minLength: 1
+          maxLength: 50
+        permissions:
+          type: object
+          properties:
+            BILLING:
+              type: boolean
+            MEMBER:MANAGEMENT:
+              type: boolean
+            TEAM_CONNECTIONS:MANAGEMENT:
+              type: boolean
+            PUBLIC_API_KEY:MANAGEMENT:
+              type: boolean
+            WORKSPACE:MANAGEMENT:
+              type: boolean
+            PERMISSION_ROLE:MANAGEMENT:
+              type: boolean
+        title:
+          type: string
+          maxLength: 30
+        type:
+          $ref: '#/components/schemas/WorkspaceRoleType'
+        createdAt:
+          type: string
+      required:
+        - id
+        - alias
+        - permissions
+        - title
+        - type
+        - createdAt
+    WorkspaceType:
+      type: string
+      enum:
+        - personal
+        - team
+        - developer
+        - delegated
+    Workspace:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/UUID'
+        parentWorkspaceId:
+          allOf:
+            - $ref: '#/components/schemas/UUID'
+            - nullable: true
+        title:
+          type: string
+          maxLength: 100
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        slug:
+          type: string
+          minLength: 3
+          maxLength: 50
+        type:
+          $ref: '#/components/schemas/WorkspaceType'
+        referralCode:
+          type: string
+          nullable: true
+        avatarStoragePath:
+          type: string
+          nullable: true
+        referral:
+          type: object
+          nullable: true
+          properties:
+            code:
+              type: string
+              nullable: true
+              maxLength: 255
+            referrerAwardMb:
+              type: number
+              nullable: true
+            referredAwardMb:
+              type: number
+              nullable: true
+        membersCount:
+          type: number
+        avatarUrl:
+          type: string
+          nullable: true
+        workspaceRoles:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkspaceRole'
+      required:
+        - id
+        - parentWorkspaceId
+        - title
+        - slug
+        - type
+        - referralCode
+        - avatarStoragePath
+        - referral
+        - membersCount
+        - avatarUrl
+        - workspaceRoles
+    SharingFilters:
+      type: string
+      enum:
+        - onlyMe
+        - published
+        - shared
+        - sharedWithMe
+        - sharedWithMeDirectly
+    UsageType:
+      type: string
+      enum:
+        - storage
+        - chatbot
+        - credits
+        - imported_items
