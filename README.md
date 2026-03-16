@@ -1,5 +1,7 @@
 # Fabric API
 
+[![Semgrep](https://github.com/inconceivablelabs/fabric-api/actions/workflows/semgrep.yml/badge.svg)](https://github.com/inconceivablelabs/fabric-api/actions/workflows/semgrep.yml)
+
 Python client library and MCP server for the [Fabric](https://fabric.so) v2 REST API.
 
 Fabric is a self-organizing workspace and knowledge management app. This project provides:
