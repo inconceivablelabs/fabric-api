@@ -6,7 +6,7 @@ dist/
 .ruff_cache/
 .pytest_cache/
 .pyright/
-.private-journal/
+.private-journal
 
 # Beads (lives in project-internals/fabric-api/.beads, symlinked here)
 .beads
